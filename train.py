@@ -6,6 +6,8 @@ import torch.optim as optim
 import torch.nn as nn
 from torch.nn import functional as F
 
+torch.cuda.set_enabled_lms(True)
+
 import model
 from data import *
 

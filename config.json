@@ -3,9 +3,9 @@
   
   "path" :
     {
-      "scans" : "/powerai/data/retina-unet/data/LIDC-IDRI",
-      "masks" : "/powerai/data/retina-unet/data/lung_masks_LUNA16",
-      "labelled_list" : "/powerai/data/retina-unet/data/labelled.pickle"
+      "scans" : "/wmlce/data/retina-unet/data/LIDC-IDRI",
+      "masks" : "/wmlce/data/retina-unet/data/lung_masks_LUNA16",
+      "labelled_list" : "/wmlce/data/retina-unet/data/labelled.pickle"
     },
 
   "train3d" :

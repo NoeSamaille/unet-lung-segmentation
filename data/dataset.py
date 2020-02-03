@@ -33,7 +33,8 @@ class Dataset(data.Dataset):
     nrrd_scan = nrrd.read(glob(os.path.join(path, "*CT.nrrd"))[0])   # tuple containing the CT scan and some metadata
     ct_scan = np.swapaxes(nrrd_scan[0], 0, 2)
     seg_mask, _, _ = utils.load_itk(os.path.join(self.masks_path, scan_dicom_id + ".mhd"))# function uses SimpleITK to load lung masks from mhd/zraw data
-
+    
+    
     if self.n_classes == 3:
       seg_mask[seg_mask == 3] = 1
       seg_mask[seg_mask == 4] = 2
@@ -42,6 +43,7 @@ class Dataset(data.Dataset):
       seg_mask[seg_mask <= 0] = 0
       seg_mask[seg_mask > 0] = 1
       
+    nrrd.write("./lung_mask.nrrd", np.swapaxes(seg_mask,0,2))
   
     if self.mode == "3d":
       ct_scan = scipy.ndimage.interpolation.zoom(ct_scan, [self.scan_size[0]/float(len(ct_scan)) , self.scan_size[1]/512., self.scan_size[2]/512.], mode = "nearest")
