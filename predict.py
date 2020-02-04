@@ -10,6 +10,39 @@ import argparse
 import model
 from data import *
 
+
+def predict(labelled_list, masks, scans, nb_classes, start_filters):
+
+    # Use CUDA
+    device = torch.device("cuda:0")
+    
+    # Open labelled list
+    with open(labelled_list, "rb") as f:
+        list_scans = pickle.load(f)
+    
+    # Parse list of CT-scans
+    ct_scans = [s.split('/')[1] for s in list_scans]
+    ct_scans = ct_scans[30:]
+
+    # Build dataset
+    data = dataset.Dataset(ct_scans, scans, masks, mode="3d")
+    
+    # Load model
+    criterion = utils.dice_loss
+    unet = model.UNet(1, nb_classes, start_filters).to(device)
+    unet.load_state_dict(torch.load("./model"))
+    
+    # Apply model to new scan
+    x,y = data.__getitem__(15, verbose=True)
+    x = torch.Tensor(np.array([x.astype(np.float16)])).to(device)
+    y = torch.Tensor(np.array([y.astype(np.float16)])).to(device)
+    logits = unet(x)
+    loss = criterion(logits, y)
+    print(loss.item())
+    mask = logits.cpu().detach().numpy()
+    nrrd.write("lung_mask2.nrrd", mask[0][0])
+
+
 if __name__ == "__main__":
     
     # Argument parser
@@ -21,26 +54,5 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--start-filters", required=True, help="")
     args = parser.parse_args()
 
-    device = torch.device("cuda:0")
-    
-    with open(args.labelled_list, "rb") as f:
-        list_scans = pickle.load(f)
-    
-    st_scans = [s.split('/')[1] for s in list_scans]
-    st_scans = st_scans[30:]
-    
-    dataset = dataset.Dataset(st_scans, args.scans, args.masks, mode="3d")
-    
-    criterion = utils.dice_loss
-    unet = model.UNet(1, int(args.nb_classes), int(args.start_filters)).to(device)
-    unet.load_state_dict(torch.load("./model"))
-    
-    x,y = dataset.__getitem__(0)
-    x = torch.Tensor(np.array([x.astype(np.float16)])).to(device)
-    y = torch.Tensor(np.array([y.astype(np.float16)])).to(device)
-    logits = unet(x)
-    loss = criterion(logits, y)
-    print(loss.item())
-    mask = logits.cpu().detach().numpy()
-    nrrd.write("lung_mask2.nrrd", mask[0][0])
-    
+    predict(args.labelled_list, args.masks, args.scans, int(args.nb_classes), int(args.start_filters))
+

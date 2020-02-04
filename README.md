@@ -1,12 +1,6 @@
 # Lung Segmentation
 
-Lung Segmentation using a UNet model on 3D CT scans
-
-## Data Used :
-
-The data used is the TCIA LIDC-IDRI dataset Standardized representation, link to [download](https://wiki.cancerimagingarchive.net/display/DOI/Standardized+representation+of+the+TCIA+LIDC-IDRI+annotations+using+DICOM).
-
-Regarding lung masks, LUNA16 lung segmentation is used.
+Lung Segmentation using a UNet model on 3D CT scans.
 
 ## Current results example :
 
@@ -37,9 +31,10 @@ $ conda install -c file://PATH_TO_ANACONDA/conda-bld simpleitk
 ### Tree
 
 ```
+.
 +-- data/
-    +-- dataset.py
-    +-- utils.py
+    +-- dataset.py	: Class describing the dataset we use for lung segmentation
+    +-- utils.py	: Script for manipulating medical files
 +-- config.json
 +-- eval.py
 +-- model.py		: U-Net model definition
@@ -47,6 +42,17 @@ $ conda install -c file://PATH_TO_ANACONDA/conda-bld simpleitk
 +-- README.md		: This documentation file
 +-- train.py		: Train script to train a new lung segmentation model
 ```
+
+### Data 
+
+The data used is the __TCIA LIDC-IDRI__ dataset Standardized representation ([download here](https://wiki.cancerimagingarchive.net/display/DOI/Standardized+representation+of+the+TCIA+LIDC-IDRI+annotations+using+DICOM)), combined with matching lung masks from __LUNA16__ (not all CT-scans have their lung masks in LUNA16 so we need the list of segmented ones).
+
+3 parameters have to be fulfilled to use available data:
++ `labelled-list`: path to the `pickle` file containing the list of CT-scans from the TCIA LIDC-IDRI dataset for which we have access to the lung segmentation masks through the LUNA16 dataset.
++ `scans`: path to the TCIA LIDC-IDRI dataset.
++ `masks`: path to the LUNA16 dataset containing lung masks.
+
+You can manipulate data trough the `data/dataset.py` (class describing our lung segmentation dataset) and `data/utils.py` (tools for manipulating medical files) files.
 
 ### Run predictions
 
