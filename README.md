@@ -1,6 +1,6 @@
 # Lung Segmentation
 
-Lung Segmentation using a UNet model on 3D CT scans.
+Lung Segmentation using a U-Net model on 3D CT scans.
 
 ## Current results example :
 
@@ -54,14 +54,14 @@ The data used is the __TCIA LIDC-IDRI__ dataset Standardized representation ([do
 
 You can manipulate data trough the `data/dataset.py` (class describing our lung segmentation dataset) and `data/utils.py` (tools for manipulating medical files) files.
 
-### Run predictions
+### Run evaluation 
 
-To perform predictions using the existing model run for example (wmlce on powerai):
+To perform evaluation using the existing model run for example (wmlce on powerai):
 ```
 $ export LABELLED_LIST=/wmlce/data/retina-unet/data/labelled.pickle
 $ export MASKS=/wmlce/data/retina-unet/data/lung_masks_LUNA16
 $ export SCANS=/wmlce/data/retina-unet/data/LIDC-IDRI
 $ export NB_CLASSES=1
 $ export START_FILTERS=32
-$ pyhton3 predict.py --labelled-list $LABELLED_LIST --masks $MASKS --scans $SCANS --nb-classes $NB_CLASSES --start-filters $START_FILTERS 
+$ python3 eval.py --labelled-list $LABELLED_LIST --masks $MASKS --scans $SCANS --nb-classes $NB_CLASSES --start-filters $START_FILTERS 
 ``` 
