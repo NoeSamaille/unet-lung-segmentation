@@ -62,7 +62,7 @@ $ data=/wmlce/data/projects/jfr/data/LIDC-IDRI/LIDC-IDRI-0325/1.3.6.1.4.1.14519.
 $ output_path=/wmlce/data/projects/jfr/ls_output
 $ nb_classes=1
 $ start_filters=32
-$ python3 predict.py -d $data -o $output_path -c $nb_classes -f $start_filters [--image-out] [-t]
+$ python3 predict.py -d $data -o $output_path -c $nb_classes -f $start_filters [-t]
 ```
 + See `python3 predict.py --help` for more information.
 

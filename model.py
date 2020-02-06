@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-
 class ConvUnit(nn.Module):
   """
     Convolution Unit -
@@ -26,7 +25,6 @@ class ConvUnit(nn.Module):
 
   def forward(self,x):
     return self.double_conv(x)
-
 
 
 class EncoderUnit(nn.Module):
@@ -78,8 +76,6 @@ class OutConv(nn.Module):
 
   def forward(self, x):
     return self.conv(x)
-
-
 
 
 ###########   Model :
