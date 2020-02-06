@@ -4,7 +4,7 @@ Lung Segmentation using a U-Net model on 3D CT scans.
 
 ## Current results example :
 
-![lung segmentation example](https://github.com/Thvnvtos/Lung_Segmentation/blob/unet3d/readme_images/ex_res.png?raw=true)
+![lung segmentation example](readme_images/ex_res.png)
 
 ## Getting started
 
