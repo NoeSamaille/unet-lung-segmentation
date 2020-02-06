@@ -4,7 +4,7 @@ Lung Segmentation using a U-Net model on 3D CT scans.
 
 ## Current results example :
 
-![lung segmentation example](https://github.com/Thvnvtos/Lung_Segmentation/blob/unet3d/readme_images/example_segmentation.png?raw=true)
+![lung segmentation example](https://github.com/Thvnvtos/Lung_Segmentation/blob/unet3d/readme_images/ex_res.png?raw=true)
 
 ## Getting started
 
@@ -54,14 +54,27 @@ The data used is the __TCIA LIDC-IDRI__ dataset Standardized representation ([do
 
 You can manipulate data trough the `data/dataset.py` (class describing our lung segmentation dataset) and `data/utils.py` (tools for manipulating medical files) files.
 
-### Run evaluation 
+### Predictions
 
-To perform evaluation using the existing model run for example (wmlce on powerai):
+To perform predictions on unseen CT-scans, run for example (wmlce on powerai):
 ```
-$ export LABELLED_LIST=/wmlce/data/retina-unet/data/labelled.pickle
-$ export MASKS=/wmlce/data/retina-unet/data/lung_masks_LUNA16
-$ export SCANS=/wmlce/data/retina-unet/data/LIDC-IDRI
-$ export NB_CLASSES=1
-$ export START_FILTERS=32
+$ data=/wmlce/data/projects/jfr/data/LIDC-IDRI/LIDC-IDRI-0325/1.3.6.1.4.1.14519.5.2.1.6279.6001.815399168774050638734383723372/1.3.6.1.4.1.14519.5.2.1.6279.6001.725023183844147505748475581290/LIDC-IDRI-0325_CT.nrrd
+$ output_path=/wmlce/data/projects/jfr/ls_output
+$ nb_classes=1
+$ start_filters=32
+$ python3 predict.py -d $data -o $output_path -c $nb_classes -f $start_filters [--image-out] [-t]
+```
++ See `python3 predict.py --help` for more information.
+
+### Evaluation 
+
+To perform evaluation using the existing model, run for example (wmlce on powerai):
+```
+$ LABELLED_LIST=/wmlce/data/retina-unet/data/labelled.pickle
+$ MASKS=/wmlce/data/retina-unet/data/lung_masks_LUNA16
+$ SCANS=/wmlce/data/retina-unet/data/LIDC-IDRI
+$ NB_CLASSES=1
+$ START_FILTERS=32
 $ python3 eval.py --labelled-list $LABELLED_LIST --masks $MASKS --scans $SCANS --nb-classes $NB_CLASSES --start-filters $START_FILTERS 
 ``` 
++ See `python3 eval.py --help` for more information.
