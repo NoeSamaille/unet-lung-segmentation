@@ -10,18 +10,22 @@ import argparse
 import glob
 import os
 
-import model
-from data import *
+try:
+    import model
+    from data import *
+except:
+    from . import model
+    from .data import *
 
 
-def predict(ct_scan, nb_classes, start_filters, threshold=False, verbose=False):
+def predict(ct_scan, nb_classes, start_filters, model_path, threshold=False, verbose=False):
 
     # Use CUDA
     device = torch.device("cuda:0")
 
     # Load model
     unet = model.UNet(1, nb_classes, start_filters).to(device)
-    unet.load_state_dict(torch.load("./model"))
+    unet.load_state_dict(torch.load(model_path))
 
     # Apply model to new scan
     x = torch.Tensor(np.array([ct_scan.astype(np.float16)])).to(device)
@@ -46,6 +50,7 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", required=True, help="Path to output directory")
     parser.add_argument("-c", "--nb-classes", required=True, help="Number of U-Net output classes")
     parser.add_argument("-f", "--start-filters", required=True, help="Number of filters")
+    parser.add_argument("-m", "--model", required=True, help="Path to model")
     parser.add_argument("-t", "--threshold", action="store_true", required=False, help="If set, resulting mask will be thresholded by mean+sigma")
     parser.add_argument("-v", "--verbose", action="store_true", required=False, help="If set, will show additionnal information")
     args = parser.parse_args()
@@ -59,7 +64,7 @@ if __name__ == "__main__":
         print(np.shape(ct_scan))
 
     # Compute lungs mask
-    mask = predict(ct_scan, int(args.nb_classes), int(args.start_filters), threshold=args.threshold, verbose=args.verbose)
+    mask = predict(ct_scan, int(args.nb_classes), int(args.start_filters), args.model, threshold=args.threshold, verbose=args.verbose)
 
     # Write into ouput files (nrrd format)
     if args.output is not None:
