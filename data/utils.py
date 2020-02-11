@@ -21,8 +21,9 @@ def write_itk(output_path, img_array, origin, spacing):
     sitk.WriteImage(itk_image, output_path)
 
 
+# Downsample image using nearest interpolation
 def prep_img_arr(img_array, scan_size=[128, 256, 256]):
-    img_array = scipy.ndimage.interpolation.zoom(img_array, [scan_size[0]/float(len(img_array)), scan_size[1]/512., scan_size[2]/512.], mode="nearest")
+    img_array = scipy.ndimage.interpolation.zoom(img_array, scan_size[1]/512., mode="nearest")
     return img_array[np.newaxis, :]
 
 

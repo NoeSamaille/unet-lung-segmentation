@@ -22,7 +22,11 @@ def predict(ct_scan, nb_classes, start_filters, model_path, threshold=False, ver
 
     # Use CUDA
     device = torch.device("cuda:0")
-
+    # LMS
+    try:
+        torch.cuda.set_enabled_lms(True)
+    except:
+        print("LMS not supported")
     # Load model
     unet = model.UNet(1, nb_classes, start_filters).to(device)
     unet.load_state_dict(torch.load(model_path))
@@ -36,7 +40,7 @@ def predict(ct_scan, nb_classes, start_filters, model_path, threshold=False, ver
 
     # Thresholding
     if threshold == True:
-        ts = np.mean(mask)+np.std(mask)
+        ts = np.mean(mask) + np.std(mask)
         mask[mask <= ts] = 0
         mask[mask > ts] = 1
     return mask
@@ -59,6 +63,8 @@ if __name__ == "__main__":
     _, scan_id = os.path.split(args.data)
     scan_id = scan_id.split('.')[0]
     ct_scan, origin, spacing = utils.load_itk(args.data)
+    if args.verbose == True:
+        print(np.shape(ct_scan))
     ct_scan = utils.prep_img_arr(ct_scan)
     if args.verbose == True:
         print(np.shape(ct_scan))
