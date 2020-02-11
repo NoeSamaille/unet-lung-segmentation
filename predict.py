@@ -74,5 +74,6 @@ if __name__ == "__main__":
 
     # Write into ouput files (nrrd format)
     if args.output is not None:
+        print(ct_scan[0].dtype)
         utils.write_itk(os.path.join(args.output, scan_id + '_mask.nrrd'), mask[0][0], origin, spacing)
         utils.write_itk(os.path.join(args.output, scan_id + '.nrrd'), ct_scan[0], origin, spacing)
