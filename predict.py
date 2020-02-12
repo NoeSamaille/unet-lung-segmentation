@@ -35,8 +35,6 @@ def predict(ct_scan, nb_classes, start_filters, model_path, threshold=False, ver
     x = torch.Tensor(np.array([ct_scan.astype(np.float16)])).to(device)
     logits = unet(x)
     mask = logits.cpu().detach().numpy()
-    if verbose == True:
-        print(np.shape(mask), np.min(mask), np.max(mask), np.mean(mask), np.std(mask))
 
     # Thresholding
     if threshold == True:
@@ -63,17 +61,16 @@ if __name__ == "__main__":
     _, scan_id = os.path.split(args.data)
     scan_id = scan_id.split('.')[0]
     ct_scan, origin, spacing = utils.load_itk(args.data)
-    if args.verbose == True:
-        print(np.shape(ct_scan))
-    ct_scan = utils.prep_img_arr(ct_scan)
-    if args.verbose == True:
-        print(np.shape(ct_scan))
+    scan_shape = ct_scan.shape
+    ct_scan, spacing = utils.prep_img_arr(ct_scan, spacing)
 
     # Compute lungs mask
     mask = predict(ct_scan, int(args.nb_classes), int(args.start_filters), args.model, threshold=args.threshold, verbose=args.verbose)
 
+    # Resample mask
+    mask, spacing = utils.resample(mask[0][0], spacing, scan_shape)
+
     # Write into ouput files (nrrd format)
     if args.output is not None:
-        print(ct_scan[0].dtype)
-        utils.write_itk(os.path.join(args.output, scan_id + '_mask.nrrd'), mask[0][0], origin, spacing)
-        utils.write_itk(os.path.join(args.output, scan_id + '.nrrd'), ct_scan[0], origin, spacing)
+        utils.write_itk(os.path.join(args.output, scan_id + '_mask.nrrd'), mask, origin, spacing)
+        # utils.write_itk(os.path.join(args.output, scan_id + '.nrrd'), ct_scan[0], origin, spacing)
