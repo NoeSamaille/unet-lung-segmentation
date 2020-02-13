@@ -41,6 +41,7 @@ def predict(ct_scan, nb_classes, start_filters, model_path, threshold=False, ver
         ts = np.mean(mask) + np.std(mask)
         mask[mask <= ts] = 0
         mask[mask > ts] = 1
+        mask = mask.astype('uint8')
     return mask
 
 
@@ -60,17 +61,23 @@ if __name__ == "__main__":
     # Load scan
     _, scan_id = os.path.split(args.data)
     scan_id = scan_id.split('.')[0]
-    ct_scan, origin, spacing = utils.load_itk(args.data)
-    scan_shape = ct_scan.shape
-    ct_scan, spacing = utils.prep_img_arr(ct_scan, spacing)
+    ct_scan, origin, orig_spacing = utils.load_itk(args.data)
+    if args.verbose == True:
+        print(scan_id, ":\n -> shape:", ct_scan.shape, "\n -> spacing:", orig_spacing)
+    ct_scan, spacing = utils.prep_img_arr(ct_scan, orig_spacing)
+    if args.verbose == True:
+        print("CT-scan:\n -> shape:", ct_scan.shape, "\n -> spacing:", spacing)
 
     # Compute lungs mask
     mask = predict(ct_scan, int(args.nb_classes), int(args.start_filters), args.model, threshold=args.threshold, verbose=args.verbose)
 
     # Resample mask
-    mask, spacing = utils.resample(mask[0][0], spacing, scan_shape)
-
+    mask = utils.resample(mask[0][0], spacing, orig_spacing)
+    if args.threshold == True:
+        mask[mask<=0] = 0
+        mask[mask>0] = 1
+        mask = mask.astype('uint8')
+    if args.verbose == True:
+        print("Mask:\n -> shape:", mask.shape, "\n -> spacing:", orig_spacing)
     # Write into ouput files (nrrd format)
-    if args.output is not None:
-        utils.write_itk(os.path.join(args.output, scan_id + '_mask.nrrd'), mask, origin, spacing)
-        # utils.write_itk(os.path.join(args.output, scan_id + '.nrrd'), ct_scan[0], origin, spacing)
+    utils.write_itk(os.path.join(args.output, scan_id + '_mask.nrrd'), mask, origin, orig_spacing)
