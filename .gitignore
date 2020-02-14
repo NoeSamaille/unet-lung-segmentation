@@ -9,6 +9,7 @@ mask3D.nrrd
 model
 *.nrrd
 core.*
+*.ignore*
 
 ### Linux ###
 *~
