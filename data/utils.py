@@ -31,11 +31,9 @@ def resample(img, spacing, target_spacing):
 
 # Prepare image for model
 def prep_img_arr(img, spacing, target_shape=[128, 256, 256]):
-    # img = scipy.ndimage.interpolation.zoom(img, target_shape[1]/512., mode="nearest")
-    zoom_factors = [target_shape[i] / img.shape[i] for i in range(len(img.shape))]
     target_spacing = [img.shape[i] * spacing[i] / target_shape[i] for i in range(len(img.shape))]
-    img = scipy.ndimage.interpolation.zoom(img, zoom_factors, mode="nearest")
-    # img = resample(img, spacing, target_spacing)
+    #img = scipy.ndimage.interpolation.zoom(img, zoom_factors, mode="nearest")
+    img = resample(img, spacing, target_spacing)
     return img[np.newaxis, :], target_spacing
 
 

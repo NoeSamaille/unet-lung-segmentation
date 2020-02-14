@@ -65,6 +65,7 @@ if __name__ == "__main__":
     if args.verbose == True:
         print(scan_id, ":\n -> shape:", ct_scan.shape, "\n -> spacing:", orig_spacing)
     ct_scan, spacing = utils.prep_img_arr(ct_scan, orig_spacing)
+    utils.write_itk(os.path.join(args.output, scan_id + '.nrrd'), ct_scan, origin, spacing)
     if args.verbose == True:
         print("CT-scan:\n -> shape:", ct_scan.shape, "\n -> spacing:", spacing)
 
