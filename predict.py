@@ -6,6 +6,7 @@ from torch.utils import data
 import torch.optim as optim
 import torch.nn as nn
 from torch.nn import functional as F
+from scipy import ndimage
 import argparse
 import glob
 import os
@@ -18,7 +19,8 @@ except:
     from .data import *
 
 
-def predict(ct_scan, nb_classes, start_filters, model_path, threshold=False, verbose=False):
+def predict(ct_scan, nb_classes, start_filters, model_path, threshold=False, 
+            erosion=False, verbose=False):
 
     # Use CUDA
     device = torch.device("cuda:0")
@@ -42,11 +44,21 @@ def predict(ct_scan, nb_classes, start_filters, model_path, threshold=False, ver
         mask[mask <= ts] = 0
         mask[mask > ts] = 1
         mask = mask.astype('uint8')
+
+    # Morphological closing (dilation -> erosion)
+    mask[0][0] = ndimage.binary_closing(mask[0][0], 
+        structure=ndimage.generate_binary_structure(3,2)).astype(mask.dtype)
+
+    # Morphological erosion
+    if erosion == True:
+        mask[0][0] = ndimage.binary_erosion(mask[0][0], 
+            structure=ndimage.generate_binary_structure(3,2)).astype(mask.dtype)
+
     return mask
 
 
 if __name__ == "__main__":
-    
+
     # Argument parser
     parser = argparse.ArgumentParser(description="Inference script")
     parser.add_argument("-d", "--data", required=True, help="Path to input CT-scan (nrrd format)")
@@ -55,6 +67,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--start-filters", required=True, help="Number of filters")
     parser.add_argument("-m", "--model", required=True, help="Path to model")
     parser.add_argument("-t", "--threshold", action="store_true", required=False, help="If set, resulting mask will be thresholded by mean+sigma")
+    parser.add_argument("-e", "--erosion", action="store_true", required=False, help="If set, will perform morphological erosion on resulting mask")
     parser.add_argument("-v", "--verbose", action="store_true", required=False, help="If set, will show additionnal information")
     args = parser.parse_args()
 
@@ -65,12 +78,11 @@ if __name__ == "__main__":
     if args.verbose == True:
         print(scan_id, ":\n -> shape:", ct_scan.shape, "\n -> spacing:", orig_spacing)
     ct_scan, spacing = utils.prep_img_arr(ct_scan, orig_spacing)
-    utils.write_itk(os.path.join(args.output, scan_id + '.nrrd'), ct_scan, origin, spacing)
     if args.verbose == True:
         print("CT-scan:\n -> shape:", ct_scan.shape, "\n -> spacing:", spacing)
 
     # Compute lungs mask
-    mask = predict(ct_scan, int(args.nb_classes), int(args.start_filters), args.model, threshold=args.threshold, verbose=args.verbose)
+    mask = predict(ct_scan, int(args.nb_classes), int(args.start_filters), args.model, threshold=args.threshold, erosion=args.erosion, verbose=args.verbose)
 
     # Resample mask
     mask = utils.resample(mask[0][0], spacing, orig_spacing)
