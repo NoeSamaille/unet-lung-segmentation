@@ -6,7 +6,6 @@
 __pycache__/
 .ipynb_checkpoints/
 mask3D.nrrd
-model
 *.nrrd
 core.*
 *.ignore*
