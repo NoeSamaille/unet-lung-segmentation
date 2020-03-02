@@ -17,16 +17,11 @@ Our base wmlce conda environment does not come with `SimpleITK` nor `pynrrd`, tw
 $ pip install pynrrd
 ```
 
-+ To install `SimpleITK` (need to build the library on Power):
++ To install `SimpleITK` (from `.whl`):
 ```
-$ conda update conda
-$ conda update conda-build
-$ git clone https://github.com/SimpleITK/SimpleITKCondaRecipe.git
-$ cd SimpleITKCondaRecipe
-$ conda build recipe
-$ conda install -c file://PATH_TO_ANACONDA/conda-bld simpleitk
+$ pip install SimpleITK-1.2.0+gd6026-cp36-cp36m-linux_ppc64le.whl
 ```
-  + `PATH_TO_ANACONDA` example on powerai wmlce: `/opt/anaconda/envs/wmlce/conda-bld`
+  + If you do not have access to the whl file, you need to build it (on power pc)
 
 ### Tree
 
@@ -62,7 +57,7 @@ $ data=/wmlce/data/projects/jfr/data/LIDC-IDRI/LIDC-IDRI-0325/1.3.6.1.4.1.14519.
 $ output_path=/wmlce/data/projects/jfr/ls_output
 $ nb_classes=1
 $ start_filters=32
-$ python3 predict.py -d $data -o $output_path -c $nb_classes -f $start_filters [-t]
+$ python3 predict.py -d $data -o $output_path -c $nb_classes -f $start_filters -t [-e]
 ```
 + See `python3 predict.py --help` for more information.
 
