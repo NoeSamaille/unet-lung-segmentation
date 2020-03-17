@@ -55,8 +55,10 @@ class Dataset(data.Dataset):
             seg_mask[seg_mask == 4] = 2
             seg_mask[seg_mask == 5] = 3
         else:
-            seg_mask[seg_mask <= 0] = 0
-            seg_mask[seg_mask > 0] = 1
+            # Remove main bronchus
+            seg_mask[seg_mask == 3] = 1
+            seg_mask[seg_mask == 4] = 1
+            seg_mask[seg_mask != 1] = 0
 
         if verbose == True:
             nrrd.write("./luna16_mask.nrrd", np.swapaxes(seg_mask, 0, 2))
