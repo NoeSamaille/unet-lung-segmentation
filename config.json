@@ -3,9 +3,9 @@
   
   "path" :
     {
-      "scans" : "/wmlce/data/medical-datasets/LIDC-IDRI",
-      "masks" : "/wmlce/data/medical-datasets/lung_masks_LUNA16",
-      "labelled_list" : "/wmlce/data/medical-datasets/labelled.pickle"
+      "scans" : "/wmlce/data/projects/data/LIDC-IDRI",
+      "masks" : "/wmlce/data/projects/data/lung_masks_LUNA16",
+      "labelled_list" : "/wmlce/data/projects/data/labelled.pickle"
     },
 
   "train3d" :
@@ -16,7 +16,7 @@
       "start_filters" : 32,
       "scan_size" : [128, 256, 256],
       "train_size" : 800,
-      "validation_steps" : 30,
+      "validation_steps" : 200,
       "validation_size" : 50,
       "n_classes" : 1
     },

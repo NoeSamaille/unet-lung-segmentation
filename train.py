@@ -1,16 +1,23 @@
-from data import *
+import os
 import model
-import numpy as np
-import pickle
 import json
 import torch
-from torch.utils import data
-import torch.optim as optim
+import pickle
+import argparse
+from data import *
+import numpy as np
 import torch.nn as nn
+import torch.optim as optim
+from torch.utils import data
 from torch.nn import functional as F
 
 
 if __name__ == '__main__':
+
+    # Argument parser
+    parser = argparse.ArgumentParser(description="Preprocessing script")
+    parser.add_argument("-d", "--data", required=True, help="Path to preprocessing output directory.")
+    args = parser.parse_args()
 
     torch.cuda.set_enabled_lms(True)
     torch.backends.cudnn.benchmark = True
@@ -20,20 +27,17 @@ if __name__ == '__main__':
 
     device = torch.device("cuda:0")
 
-    with open(config["path"]["labelled_list"], "rb") as f:
-        list_scans = pickle.load(f)
-
-    st_scans = [s.split('/')[1] for s in list_scans]
-
+    st_scans = np.load(os.path.join(args.data, "list_scans.npy"))
+    
     if config["mode"] == "3d":
         train_scans = st_scans[:config["train3d"]["train_size"]]
         val_scans = st_scans[config["train3d"]["train_size"]:]
-        train_data = dataset.Dataset(train_scans, config["path"]["scans"], config["path"]["masks"],
+        train_data = dataset.Dataset(train_scans, args.data,
                                     mode="3d", scan_size=config["train3d"]["scan_size"], n_classes=config["train3d"]["n_classes"])
-        val_data = dataset.Dataset(val_scans, config["path"]["scans"], config["path"]
-                                ["masks"], mode="3d", scan_size=config["train3d"]["scan_size"])
+        val_data = dataset.Dataset(val_scans, args.data,
+                                    mode="3d", scan_size=config["train3d"]["scan_size"])
         unet = model.UNet(1, config["train3d"]["n_classes"],
-                        config["train3d"]["start_filters"], bilinear=False).to(device)
+                        config["train3d"]["start_filters"], bilinear=False).cuda()
         criterion = utils.dice_loss
         optimizer = optim.Adam(unet.parameters(), lr=config["train3d"]["lr"])
         batch_size = config["train3d"]["batch_size"]
@@ -43,7 +47,7 @@ if __name__ == '__main__':
     else:
         st_scans = st_scans[:config["train2d"]["train_size"]]
         dataset = dataset.Dataset(
-            st_scans, config["path"]["scans"], config["path"]["masks"], mode="2d")
+            st_scans, args.data, mode="2d")
         unet = model.UNet(1, 1, config["train2d"]
                         ["start_filters"], bilinear=True).to(device)
         criterion = utils.dice_loss
@@ -69,7 +73,7 @@ if __name__ == '__main__':
             labels.requires_grad = True
 
             optimizer.zero_grad()
-            logits = unet(batch)
+            logits = unet(batch).cuda()
             loss = criterion(logits, labels)
             loss.backward()
             optimizer.step()
@@ -100,3 +104,4 @@ if __name__ == '__main__':
                     torch.save(unet.state_dict(), "./model")
                     best_val_loss = val_loss
                 print("\n")
+
