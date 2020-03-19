@@ -53,11 +53,12 @@ You can manipulate data trough the `data/dataset.py` (class describing our lung 
 
 To perform predictions on unseen CT-scans, run for example (wmlce on powerai):
 ```
-$ data=/wmlce/data/projects/jfr/data/LIDC-IDRI/LIDC-IDRI-0325/1.3.6.1.4.1.14519.5.2.1.6279.6001.815399168774050638734383723372/1.3.6.1.4.1.14519.5.2.1.6279.6001.725023183844147505748475581290/LIDC-IDRI-0325_CT.nrrd
-$ output_path=/wmlce/data/projects/jfr/ls_output
+$ data=/wmlce/data/medical-datasets/LIDC-IDRI/LIDC-IDRI-0325/1.3.6.1.4.1.14519.5.2.1.6279.6001.815399168774050638734383723372/1.3.6.1.4.1.14519.5.2.1.6279.6001.725023183844147505748475581290/LIDC-IDRI-0325_CT.nrrd
+$ output_path=/wmlce/data/projects/lung_segmentation/output/preds
 $ nb_classes=1
 $ start_filters=32
-$ python3 predict.py -d $data -o $output_path -c $nb_classes -f $start_filters -t [-e]
+$ model=/wmlce/data/projects/lung_segmentation/model
+$ python3 predict.py -d $data -o $output_path -m $model -c $nb_classes -f $start_filters -t [-e]
 ```
 + See `python3 predict.py --help` for more information.
 
@@ -73,3 +74,11 @@ $ START_FILTERS=32
 $ python3 eval.py --labelled-list $LABELLED_LIST --masks $MASKS --scans $SCANS --nb-classes $NB_CLASSES --start-filters $START_FILTERS 
 ``` 
 + See `python3 eval.py --help` for more information.
+
+### Training
+
+To run training:
+```
+python train.py -d output/preprocessing/
+```
++ See `python train.py --help` for more information
