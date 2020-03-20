@@ -9,6 +9,7 @@ mask3D.nrrd
 *.nrrd
 core.*
 *.ignore*
+output
 
 ### Linux ###
 *~

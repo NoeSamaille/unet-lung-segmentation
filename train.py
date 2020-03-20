@@ -1,102 +1,158 @@
-from data import *
+import os
 import model
-import numpy as np
-import pickle
 import json
 import torch
-from torch.utils import data
-import torch.optim as optim
+import pickle
+import mlflow
+import argparse
+from data import *
+import numpy as np
 import torch.nn as nn
+import torch.optim as optim
+from torch.utils import data
 from torch.nn import functional as F
 
 
 if __name__ == '__main__':
 
+    # Argument parser
+    parser = argparse.ArgumentParser(description="Preprocessing script")
+    parser.add_argument("-d", "--data", required=True,
+                        help="Path to preprocessing output directory.")
+    parser.add_argument("-m", "--mode", required=False, default="3d",
+                        help="2d or 3d.")
+    parser.add_argument("-e", "--epochs", required=False, type=int, default=10,
+                        help="Number of epochs.")
+    parser.add_argument("--learning-rate", required=False, type=float,
+                        default=1e-4, help="Learning rate.")
+    parser.add_argument("--batch-size", required=False, type=int, default=1,
+                        help="Batch size.")
+    parser.add_argument("--train-size", required=False, type=int, default=800,
+                        help="Size of train set.")
+    parser.add_argument("--validation-size", required=False, type=int, default=50,
+                        help="Size of validation set.")
+    parser.add_argument("--validation-steps", required=False, type=int, default=200,
+                        help="Number of batches until validation.")
+    parser.add_argument("--start-filters", required=False, type=int, default=32,
+                        help="Start filters.")
+    parser.add_argument("--n-classes", required=False, type=int, default=1,
+                        help="Number of output classes.")
+    parser.add_argument("-x", "--scan-size-x", required=False, type=int, default=128,
+                        help="X axis size of preprocessed CT scans.")
+    parser.add_argument("-y", "--scan-size-y", required=False, type=int, default=256,
+                        help="Y axis size of preprocessed CT scans.")
+    parser.add_argument("-z", "--scan-size-z", required=False, type=int, default=256,
+                        help="Z axis size of preprocessed CT scans.")
+    parser.add_argument("--scans-per-batch", required=False, type=int, default=1,
+                        help="Number of scans per batch.")
+    parser.add_argument("--slices-per-batch", required=False, type=int, default=4,
+                        help="Number of slices per batch.")
+    parser.add_argument("--neg-examples-per-batch", required=False, type=int, default=0,
+                        help="Number of negative examples per batch.")
+    args = parser.parse_args()
+    args.scan_size = np.array([args.scan_size_x, args.scan_size_y, args.scan_size_z])
+
+    # CUDA setup
     torch.cuda.set_enabled_lms(True)
     torch.backends.cudnn.benchmark = True
-
-    with open("config.json") as f:
-        config = json.load(f)
-
     device = torch.device("cuda:0")
 
-    with open(config["path"]["labelled_list"], "rb") as f:
-        list_scans = pickle.load(f)
+    # MLFlow setup
+    remote_server_uri = "http://mlflow.10.7.11.23.nip.io/"
+    # sftp_uri = "sftp://pwrai:PWD@10.7.13.200:9722/wmlce/data/mlruns"
+    mlflow.set_tracking_uri(remote_server_uri)
 
-    st_scans = [s.split('/')[1] for s in list_scans]
-
-    if config["mode"] == "3d":
-        train_scans = st_scans[:config["train3d"]["train_size"]]
-        val_scans = st_scans[config["train3d"]["train_size"]:]
-        train_data = dataset.Dataset(train_scans, config["path"]["scans"], config["path"]["masks"],
-                                    mode="3d", scan_size=config["train3d"]["scan_size"], n_classes=config["train3d"]["n_classes"])
-        val_data = dataset.Dataset(val_scans, config["path"]["scans"], config["path"]
-                                ["masks"], mode="3d", scan_size=config["train3d"]["scan_size"])
-        unet = model.UNet(1, config["train3d"]["n_classes"],
-                        config["train3d"]["start_filters"], bilinear=False).to(device)
+    # Scan list
+    st_scans = np.load(os.path.join(args.data, "list_scans.npy"))
+    
+    if args.mode == "3d":
+        train_scans = st_scans[:args.train_size]
+        val_scans = st_scans[args.train_size:]
+        train_data = dataset.Dataset(train_scans, args.data,
+                                    mode="3d", scan_size=args.scan_size, n_classes=args.n_classes)
+        val_data = dataset.Dataset(val_scans, args.data,
+                                    mode="3d", scan_size=args.scan_size)
+        unet = model.UNet(1, args.n_classes,
+                        args.start_filters, bilinear=False).cuda()
         criterion = utils.dice_loss
-        optimizer = optim.Adam(unet.parameters(), lr=config["train3d"]["lr"])
-        batch_size = config["train3d"]["batch_size"]
-        epochs = config["train3d"]["epochs"]
-        val_steps = config["train3d"]["validation_steps"]
-        val_size = config["train3d"]["validation_size"]
+        optimizer = optim.Adam(unet.parameters(), lr=args.learning_rate)
+        batch_size = args.batch_size
+        epochs = args.epochs
+        val_steps = args.validation_steps
+        val_size = args.validation_size
     else:
-        st_scans = st_scans[:config["train2d"]["train_size"]]
+        st_scans = st_scans[:args.train_size]
         dataset = dataset.Dataset(
-            st_scans, config["path"]["scans"], config["path"]["masks"], mode="2d")
-        unet = model.UNet(1, 1, config["train2d"]
-                        ["start_filters"], bilinear=True).to(device)
+            st_scans, args.data, mode="2d")
+        unet = model.UNet(1, 1, args.start_filters, bilinear=True).to(device)
         criterion = utils.dice_loss
-        optimizer = optim.Adam(unet.parameters(), lr=config["train2d"]["lr"])
-        batch_size = config["train2d"]["batch_size"]
-        slices_per_batch = config["train2d"]["slices_per_batch"]
-        neg = config["train2d"]["neg_examples_per_batch"]
-        epochs = config["train2d"]["epochs"]
+        optimizer = optim.Adam(unet.parameters(), lr=args.learning_rate)
+        batch_size = args.batch_size
+        slices_per_batch = args.slices_per_batch
+        neg = args.neg_examples_per_batch
+        epochs = args.epochs
 
     best_val_loss = 1e16
-    for epoch in range(epochs):
-        epoch_loss = 0
-        for i in range(0, len(train_data), batch_size):
-            batch_loss = 0
-            batch = np.array([train_data.__getitem__(j)[0]
-                            for j in range(i, i+batch_size)]).astype(np.float16)
-            labels = np.array([train_data.__getitem__(j)[1]
-                            for j in range(i, i+batch_size)]).astype(np.float16)
+    with mlflow.start_run(experiment_id=mlflow.set_experiment("U-Net Lungs Segmentation 0")) as run:
+        # Log hyper-params to MLFlow
+        mlflow.log_param("Learning rate", args.learning_rate)
+        mlflow.log_param("Epochs", args.epochs)
+        mlflow.log_param("Batch size", args.batch_size)
+        mlflow.log_param("Train set", args.train_size)
+        mlflow.log_param("Validation set", args.validation_size)
+        mlflow.log_param("Scan size", args.scan_size)
+        val_loss_step = 0
+        
+        for epoch in range(epochs):
+            epoch_loss = 0
+            for i in range(0, len(train_data), batch_size):
+                batch_loss = 0
+                batch = np.array([train_data[j][0]
+                                for j in range(i, i+batch_size)]).astype(np.float16)
+                labels = np.array([train_data[j][1]
+                                for j in range(i, i+batch_size)]).astype(np.float16)
 
-            batch = torch.Tensor(batch).to(device)
-            labels = torch.Tensor(labels).to(device)
-            batch.requires_grad = True
-            labels.requires_grad = True
+                batch = torch.Tensor(batch).to(device)
+                labels = torch.Tensor(labels).to(device)
+                batch.requires_grad = True
+                labels.requires_grad = True
 
-            optimizer.zero_grad()
-            logits = unet(batch)
-            loss = criterion(logits, labels)
-            loss.backward()
-            optimizer.step()
-            print("Epoch {} ==> Batch {} mean loss : {}".format(
-                epoch+1, (i+1) % (val_steps), loss.item()/batch_size))
-            epoch_loss += loss.item()/batch_size
-            del batch
-            del labels
-            torch.cuda.empty_cache()
-            if (i+1) % val_steps == 0:
-                print("===================> Calculating validation loss ... ")
-                ids = np.random.randint(0, len(val_data), val_size)
-                val_loss = 0
-                for scan_id in ids:
-                    batch = np.array([val_data.__getitem__(j)[0] for j in range(
-                        scan_id, scan_id+batch_size)]).astype(np.float16)
-                    labels = np.array([val_data.__getitem__(j)[1] for j in range(
-                        scan_id, scan_id+batch_size)]).astype(np.float16)
-                    batch = torch.Tensor(batch).to(device)
-                    labels = torch.Tensor(labels).to(device)
-                    logits = unet(batch)
-                    loss = criterion(logits, labels)
-                    val_loss += loss.item()
-                val_loss /= val_size
-                print("\n # Validation Loss : ", val_loss)
-                if val_loss < best_val_loss:
-                    print("\nSaving Better Model... ")
-                    torch.save(unet.state_dict(), "./model")
-                    best_val_loss = val_loss
-                print("\n")
+                optimizer.zero_grad()
+                logits = unet(batch).cuda()
+                loss = criterion(logits, labels)
+                loss.backward()
+                optimizer.step()
+
+                print("Epoch {} ==> Batch {} mean loss : {}".format(
+                    epoch+1, (i+1) % (val_steps), loss.item()/batch_size))
+                epoch_loss += loss.item()/batch_size
+                del batch
+                del labels
+                torch.cuda.empty_cache()
+                if (i+1) % val_steps == 0:
+                    print("===================> Calculating validation loss ... ")
+                    ids = np.random.randint(0, len(val_data), val_size)
+                    val_loss = 0
+                    for scan_id in ids:
+                        batch = np.array([val_data[j][0] for j in range(
+                            scan_id, scan_id+batch_size)]).astype(np.float16)
+                        labels = np.array([val_data[j][1] for j in range(
+                            scan_id, scan_id+batch_size)]).astype(np.float16)
+                        batch = torch.Tensor(batch).to(device)
+                        labels = torch.Tensor(labels).to(device)
+                        logits = unet(batch)
+                        loss = criterion(logits, labels)
+                        val_loss += loss.item()
+                    val_loss /= val_size
+
+                    # Log mean loss to MLFLow
+                    val_loss_step = val_loss_step + 1
+                    mlflow.log_metric("Validation loss (Dice)", val_loss, step=val_loss_step)
+                
+                    print("\n # Validation Loss : ", val_loss)
+                    if val_loss < best_val_loss:
+                        print("\nSaving Better Model... ")
+                        torch.save(unet.state_dict(), "./model")
+                        best_val_loss = val_loss
+                    print("\n")
+
