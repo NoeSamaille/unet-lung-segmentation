@@ -19,6 +19,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Preprocessing script")
     parser.add_argument("-d", "--data", required=True,
                         help="Path to preprocessing output directory.")
+    parser.add_argument("-o", "--output", required=True,
+                        help="Path to output directory.")
+    parser.add_argument("--experiment-id", required=False, 
+                        default="U-Net Lung Segmentation 1",
+                        help="Path to output directory.")
     parser.add_argument("-m", "--mode", required=False, default="3d",
                         help="2d or 3d.")
     parser.add_argument("-e", "--epochs", required=False, type=int, default=10,
@@ -58,9 +63,17 @@ if __name__ == '__main__':
     device = torch.device("cuda:0")
 
     # MLFlow setup
-    remote_server_uri = "http://mlflow.10.7.11.23.nip.io/"
-    # sftp_uri = "sftp://pwrai:PWD@10.7.13.200:9722/wmlce/data/mlruns"
+    remote_server_uri = "http://mlflow.10.7.13.202.nip.io/"
+    sftp_uri = "sftp://mlflow:mlflow@mlflow-mop.mlflow.svc.cluster.local/mlflow_data/artifacts"
     mlflow.set_tracking_uri(remote_server_uri)
+    try:
+        exp_id = mlflow.create_experiment(args.experiment_id, artifact_location=sftp_uri)
+    except:
+        exp_id = mlflow.set_experiment(args.experiment_id)
+
+    # Create output dir if needed
+    if not os.path.exists(os.path.join(args.output, "model")):
+        os.makedirs(os.path.join(args.output, "model"))
 
     # Scan list
     st_scans = np.load(os.path.join(args.data, "list_scans.npy"))
@@ -93,7 +106,8 @@ if __name__ == '__main__':
         epochs = args.epochs
 
     best_val_loss = 1e16
-    with mlflow.start_run(experiment_id=mlflow.set_experiment("U-Net Lungs Segmentation 0")) as run:
+
+    with mlflow.start_run(experiment_id=exp_id) as run:
         # Log hyper-params to MLFlow
         mlflow.log_param("Learning rate", args.learning_rate)
         mlflow.log_param("Epochs", args.epochs)
@@ -147,12 +161,15 @@ if __name__ == '__main__':
 
                     # Log mean loss to MLFLow
                     val_loss_step = val_loss_step + 1
-                    mlflow.log_metric("Validation loss (Dice)", val_loss, step=val_loss_step)
+                    mlflow.log_metric("Validation dice loss", val_loss, step=val_loss_step)
                 
                     print("\n # Validation Loss : ", val_loss)
                     if val_loss < best_val_loss:
                         print("\nSaving Better Model... ")
-                        torch.save(unet.state_dict(), "./model")
+                        torch.save(unet.state_dict(), os.path.join(args.output, "model", "model"))
+                        print("\nUploading model to MLFlow...")
+                        mlflow.log_artifact(os.path.join(args.output, "model", "model"))
                         best_val_loss = val_loss
                     print("\n")
-
+        print("\nUploading model to MLFlow...")
+        mlflow.log_artifact(os.path.join(args.output, "model", "model"))
