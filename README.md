@@ -17,11 +17,26 @@ Our base wmlce conda environment does not come with `SimpleITK` nor `pynrrd`, tw
 $ pip install pynrrd
 ```
 
-+ To install `SimpleITK` (from `.whl`):
++ To install `SimpleITK` (from wheel):
+  + Python `3.6.x`:
 ```
-$ pip install SimpleITK-1.2.0+gd6026-cp36-cp36m-linux_ppc64le.whl
+$ pip install /wmlce/data/install-files/SimpleITK-1.2.0+gd6026-cp36-cp36m-linux_ppc64le.whl
 ```
-  + If you do not have access to the whl file, you need to build it (on power pc)
+  + Python `3.7.x`:
+```
+$ pip install /wmlce/data/install-files/SimpleITK-1.2.0+gd6026-cp37-cp37m-linux_ppc64le.whl
+```
+  + If you do not have access to the `whl` file, you need to build it (on power pc):
+```
+$ cd /wmlce/data/install-files
+$ wget https://github.com/SimpleITK/SimpleITK/releases/download/v1.2.0/SimpleITK-1.2.0.zip
+$ unzip SimpleITK-1.2.0.zip
+$ mkdir SimpleITK-build/ && cd SimpleITK-build/
+$ cmake ../SimpleITK-1.2.0/SuperBuild/
+$ make -j100 # extra long
+$ cd SimpleITK-build/Wrapping/Python
+$ python Packaging/setup.py bdist_wheel
+```
 
 ### Tree
 
@@ -29,13 +44,13 @@ $ pip install SimpleITK-1.2.0+gd6026-cp36-cp36m-linux_ppc64le.whl
 .
 +-- data/
     +-- dataset.py	: Class describing the dataset we use for lung segmentation
-    +-- utils.py	: Script for manipulating medical files
-+-- config.json
+    +-- utils.py	  : Script for manipulating medical files
 +-- eval.py
-+-- model.py		: U-Net model definition
-+-- predict.py		: Inference script to run infer lung mask on a CT-scan
-+-- README.md		: This documentation file
-+-- train.py		: Train script to train a new lung segmentation model
++-- model           : Pre-trained pytorch model
++-- model.py		    : U-Net model definition
++-- predict.py      : Inference script to run infer lung mask on a CT-scan
++-- README.md		    : This documentation file
++-- train.py		    : Train script to train a new lung segmentation model
 ```
 
 ### Data 
@@ -66,9 +81,9 @@ $ python3 predict.py -d $data -o $output_path -m $model -c $nb_classes -f $start
 
 To perform evaluation using the existing model, run for example (wmlce on powerai):
 ```
-$ LABELLED_LIST=/wmlce/data/retina-unet/data/labelled.pickle
-$ MASKS=/wmlce/data/retina-unet/data/lung_masks_LUNA16
-$ SCANS=/wmlce/data/retina-unet/data/LIDC-IDRI
+$ LABELLED_LIST=/wmlce/data/medical-datasets/labelled.pickle
+$ MASKS=/wmlce/data/medical-datasets/lung_masks_LUNA16
+$ SCANS=/wmlce/data/medical-datasets/LIDC-IDRI
 $ NB_CLASSES=1
 $ START_FILTERS=32
 $ python3 eval.py --labelled-list $LABELLED_LIST --masks $MASKS --scans $SCANS --nb-classes $NB_CLASSES --start-filters $START_FILTERS 
