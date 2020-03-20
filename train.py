@@ -170,5 +170,5 @@ if __name__ == '__main__':
                         best_val_loss = val_loss
                     print("\n")
         print("\nUploading best model to MLFlow...")
-        mlflow.pytorch.log_model(unet.load_state_dict(torch.load(os.path.join(args.output, "model", "model"))), "models")
+        mlflow.log_artifact(os.path.join(args.output, "model", "model"))
 
