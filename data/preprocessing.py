@@ -17,8 +17,12 @@ def pp(scan):
         # Load scan and mask
         if args.verbose == True:
             print("Loading", scan)
-        ct_scan, _, _ = utils.load_itk(os.path.join(args.scans_path, scan))
-        seg_mask, _, _ = utils.load_itk(os.path.join(args.labels_path, scan))
+        ct_scan, _, _, flip = utils.load_mhd(os.path.join(args.scans_path, scan))
+        if flip:
+            ct_scan = ct_scan[:, ::-1, ::-1]
+        seg_mask, _, _, flip = utils.load_mhd(os.path.join(args.labels_path, scan))
+        if flip:
+            seg_mask = seg_mask[:, ::-1, ::-1]
 
         if args.n_classes == 3:
             seg_mask[seg_mask == 3] = 1

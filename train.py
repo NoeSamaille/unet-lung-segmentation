@@ -167,9 +167,8 @@ if __name__ == '__main__':
                     if val_loss < best_val_loss:
                         print("\nSaving Better Model... ")
                         torch.save(unet.state_dict(), os.path.join(args.output, "model", "model"))
-                        print("\nUploading model to MLFlow...")
-                        mlflow.log_artifact(os.path.join(args.output, "model", "model"))
                         best_val_loss = val_loss
                     print("\n")
-        print("\nUploading model to MLFlow...")
-        mlflow.log_artifact(os.path.join(args.output, "model", "model"))
+        print("\nUploading best model to MLFlow...")
+        mlflow.pytorch.log_model(unet.load_state_dict(torch.load(os.path.join(args.output, "model", "model"))), "models")
+

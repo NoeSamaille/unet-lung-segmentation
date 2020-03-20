@@ -94,6 +94,7 @@ $ python3 eval.py --labelled-list $LABELLED_LIST --masks $MASKS --scans $SCANS -
 
 To run training:
 ```
+python data/preprocessing.py -s /wmlce/data/medical-datasets/LUNA16/raw/ -l /wmlce/data/medical-datasets/LUNA16/seg-lungs-LUNA16/ -o output/preprocessing/ -v
 python train.py -d output/preprocessing/
 ```
 + See `python train.py --help` for more information
