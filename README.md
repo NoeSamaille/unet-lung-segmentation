@@ -10,12 +10,24 @@ Lung Segmentation using a U-Net model on 3D CT scans.
 
 ### Installation
 
-Our base wmlce conda environment does not come with `SimpleITK` nor `pynrrd`, two required python libraries to run this code.
+Our base wmlce conda environment does not come with `SimpleITK`, `pynrrd` and `pysftp` (for MLFlow integration), two required python libraries to run this code.
 
 + To install `pynrrd`:
 ```
 $ pip install pynrrd
 ```
+
++ To install `mlflow`:
+```
+$ pip install mlflow
+```
+
++ To install `pysftp`(for MLflow integration):
+```
+$ sudo apt install libffi-dev
+$ pip install pysftp==0.2.8
+```
++ You also need to add your MLFlow sftp host to `~/.ssh/known-hosts`
 
 + To install `SimpleITK` (from wheel):
   + Python `3.6.x`:

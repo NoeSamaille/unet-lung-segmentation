@@ -45,7 +45,7 @@ def write_itk(output_path, img_array, origin, spacing):
 # Resample img to match target_spacing
 def resample(img, spacing, target_spacing):
     target_shape = [int(img.shape[i] * spacing[i] / target_spacing[i]) for i in range(len(img.shape))]
-    img = skimage.transform.resize(img, target_shape, order=1, clip=True, mode='edge')
+    img = skimage.transform.resize(img, target_shape, order=1, clip=True, preserve_range=True, mode='edge')
     return img
 
 

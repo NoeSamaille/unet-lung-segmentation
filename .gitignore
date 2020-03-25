@@ -10,6 +10,9 @@ mask3D.nrrd
 core.*
 *.ignore*
 output
+*.log
+test_*
+*bkp
 
 ### Linux ###
 *~

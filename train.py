@@ -4,6 +4,8 @@ import json
 import torch
 import pickle
 import mlflow
+import mlflow.pytorch
+import logging
 import argparse
 from data import *
 import numpy as np
@@ -34,8 +36,6 @@ if __name__ == '__main__':
                         help="Batch size.")
     parser.add_argument("--train-size", required=False, type=int, default=800,
                         help="Size of train set.")
-    parser.add_argument("--validation-size", required=False, type=int, default=50,
-                        help="Size of validation set.")
     parser.add_argument("--validation-steps", required=False, type=int, default=200,
                         help="Number of batches until validation.")
     parser.add_argument("--start-filters", required=False, type=int, default=32,
@@ -58,9 +58,10 @@ if __name__ == '__main__':
     args.scan_size = np.array([args.scan_size_x, args.scan_size_y, args.scan_size_z])
 
     # CUDA setup
-    torch.cuda.set_enabled_lms(True)
-    torch.backends.cudnn.benchmark = True
     device = torch.device("cuda:0")
+    torch.backends.cudnn.benchmark = True
+    # Enable Large Model Support (LMS)
+    torch.cuda.set_enabled_lms(True)
 
     # MLFlow setup
     remote_server_uri = "http://mlflow.10.7.13.202.nip.io/"
@@ -72,8 +73,14 @@ if __name__ == '__main__':
         exp_id = mlflow.set_experiment(args.experiment_id)
 
     # Create output dir if needed
+    args.output = os.path.join(args.output, str(args.n_classes) + "_" + str(args.scan_size_x) + "_" + str(args.scan_size_y) + "_" + str(args.scan_size_z))
     if not os.path.exists(os.path.join(args.output, "model")):
         os.makedirs(os.path.join(args.output, "model"))
+    
+    # Logging setup
+    logging.basicConfig(filename=os.path.join(args.output, "run.log"), filemode='w', level=logging.INFO)
+        
+    args.data = os.path.join(args.data, str(args.n_classes) + "_" + str(args.scan_size_x) + "_" + str(args.scan_size_y) + "_" + str(args.scan_size_z))
 
     # Scan list
     st_scans = np.load(os.path.join(args.data, "list_scans.npy"))
@@ -92,7 +99,7 @@ if __name__ == '__main__':
         batch_size = args.batch_size
         epochs = args.epochs
         val_steps = args.validation_steps
-        val_size = args.validation_size
+        val_size = len(st_scans) - args.train_size
     else:
         st_scans = st_scans[:args.train_size]
         dataset = dataset.Dataset(
@@ -113,62 +120,80 @@ if __name__ == '__main__':
         mlflow.log_param("Epochs", args.epochs)
         mlflow.log_param("Batch size", args.batch_size)
         mlflow.log_param("Train set", args.train_size)
-        mlflow.log_param("Validation set", args.validation_size)
         mlflow.log_param("Scan size", args.scan_size)
-        val_loss_step = 0
+        mlflow.log_param("Nb classes", args.n_classes)
+        mlflow.log_param("Start filters", args.start_filters)
         
-        for epoch in range(epochs):
-            epoch_loss = 0
-            for i in range(0, len(train_data), batch_size):
-                batch_loss = 0
-                batch = np.array([train_data[j][0]
-                                for j in range(i, i+batch_size)]).astype(np.float16)
-                labels = np.array([train_data[j][1]
-                                for j in range(i, i+batch_size)]).astype(np.float16)
+        try:
+            val_loss_step = 0
+            for epoch in range(epochs):
+                epoch_loss = 0
+                for i in range(0, len(train_data), batch_size):
+                    batch_loss = 0
+                    batch = np.array([train_data[j][0]
+                                    for j in range(i, i+batch_size)])#.astype(np.float16)
+                    labels = np.array([train_data[j][1]
+                                    for j in range(i, i+batch_size)])#.astype(np.float16)
 
-                batch = torch.Tensor(batch).to(device)
-                labels = torch.Tensor(labels).to(device)
-                batch.requires_grad = True
-                labels.requires_grad = True
+                    batch = torch.Tensor(batch).to(device)
+                    labels = torch.Tensor(labels).to(device)
+                    batch.requires_grad = True
+                    labels.requires_grad = True
 
-                optimizer.zero_grad()
-                logits = unet(batch).cuda()
-                loss = criterion(logits, labels)
-                loss.backward()
-                optimizer.step()
+                    optimizer.zero_grad()
+                    logits = unet(batch).cuda()
+                    loss = criterion(logits, labels)
+                    loss.backward()
+                    optimizer.step()
 
-                print("Epoch {} ==> Batch {} mean loss : {}".format(
-                    epoch+1, (i+1) % (val_steps), loss.item()/batch_size))
-                epoch_loss += loss.item()/batch_size
-                del batch
-                del labels
-                torch.cuda.empty_cache()
-                if (i+1) % val_steps == 0:
-                    print("===================> Calculating validation loss ... ")
-                    ids = np.random.randint(0, len(val_data), val_size)
-                    val_loss = 0
-                    for scan_id in ids:
-                        batch = np.array([val_data[j][0] for j in range(
-                            scan_id, scan_id+batch_size)]).astype(np.float16)
-                        labels = np.array([val_data[j][1] for j in range(
-                            scan_id, scan_id+batch_size)]).astype(np.float16)
-                        batch = torch.Tensor(batch).to(device)
-                        labels = torch.Tensor(labels).to(device)
-                        logits = unet(batch)
-                        loss = criterion(logits, labels)
-                        val_loss += loss.item()
-                    val_loss /= val_size
+                    logging.info("Epoch {} ==> Batch {} mean loss : {}".format(
+                        epoch+1, (i+1) % (val_steps), loss.item()/batch_size))
+                    epoch_loss += loss.item()/batch_size
+                    del batch
+                    del labels
+                    torch.cuda.empty_cache()
+                    if (i+1) % val_steps == 0:
+                        logging.info("===================> Calculating validation loss ... ")
+                        ids = np.random.randint(0, len(val_data), val_size)
+                        val_loss = 0
+                        for scan_id in ids:
+                            batch = np.array([val_data[j][0] for j in range(
+                                scan_id, scan_id+batch_size)])#.astype(np.float16)
+                            labels = np.array([val_data[j][1] for j in range(
+                                scan_id, scan_id+batch_size)])#.astype(np.float16)
+                            batch = torch.Tensor(batch).to(device)
+                            labels = torch.Tensor(labels).to(device)
+                            logits = unet(batch)
+                            loss = criterion(logits, labels)
+                            val_loss += loss.item()
+                        val_loss /= val_size
 
-                    # Log mean loss to MLFLow
-                    val_loss_step = val_loss_step + 1
-                    mlflow.log_metric("Validation dice loss", val_loss, step=val_loss_step)
-                
-                    print("\n # Validation Loss : ", val_loss)
-                    if val_loss < best_val_loss:
-                        print("\nSaving Better Model... ")
-                        torch.save(unet.state_dict(), os.path.join(args.output, "model", "model"))
-                        best_val_loss = val_loss
-                    print("\n")
-        print("\nUploading best model to MLFlow...")
-        mlflow.log_artifact(os.path.join(args.output, "model", "model"))
+                        # Log mean loss to MLFLow
+                        val_loss_step = val_loss_step + 1
+                        mlflow.log_metric("Validation dice loss", val_loss, step=val_loss_step)
 
+                        logging.info("\n # Validation Loss : ", val_loss)
+                        if val_loss < best_val_loss:
+                            logging.info("\nSaving Better Model... ")
+                            torch.save(unet.state_dict(), os.path.join(args.output, "model", "model"))
+                            best_val_loss = val_loss
+                        logging.info("\n")
+
+            # Upload best model to MLFlow
+            logging.info("\nUploading best model to MLFlow...")
+            unet.load_state_dict(torch.load(os.path.join(args.output, "model", "model")))
+            mlflow.pytorch.log_model(unet, "models")
+            # Upload logs
+            mlflow.log_artifact(os.path.join(args.output, "run.log"))
+
+        except Exception as e:
+            # Log the error
+            logging.error(e)
+            # Upload logs
+            mlflow.log_artifact(os.path.join(args.output, "run.log"))
+            # Upload best model to MLFlow
+            logging.info("\nUploading best model to MLFlow...")
+            unet.load_state_dict(torch.load(os.path.join(args.output, "model", "model")))
+            mlflow.pytorch.log_model(unet, "models")
+            # Release error
+            raise(e)
