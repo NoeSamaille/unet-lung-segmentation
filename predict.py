@@ -11,15 +11,8 @@ import argparse
 import glob
 import os
 
-try:
-    import model
-    from data import *
-except:
-    from . import model
-    from .data import *
 
-
-def predict(ct_scan, nb_classes, start_filters, model_path, threshold=False, 
+def predict(ct_scan, nb_classes, unet, threshold=False, 
             erosion=False, verbose=False):
 
     # Use CUDA
@@ -30,8 +23,7 @@ def predict(ct_scan, nb_classes, start_filters, model_path, threshold=False,
     except:
         print("LMS not supported")
     # Load model
-    unet = model.UNet(1, nb_classes, start_filters).to(device)
-    unet.load_state_dict(torch.load(model_path))
+    unet = unet.to(device)
 
     # Apply model to new scan
     x = torch.Tensor(np.array([ct_scan.astype(np.float16)])).to(device)
@@ -40,27 +32,48 @@ def predict(ct_scan, nb_classes, start_filters, model_path, threshold=False,
 
     # Thresholding
     if threshold == True:
-        if nb_classes > 1:
+        struct = ndimage.generate_binary_structure(3,2)
+        if nb_classes == 2:
             mask = np.round(mask).astype('uint8')
+            
+            # # Separate two lungs
+            # two_lungs_mask = mask[0][1]
+            # lung1_mask = np.zeros(two_lungs_mask.shape)
+            # lung1_mask[two_lungs_mask == 1] = 1
+            # lung2_mask = np.zeros(two_lungs_mask.shape)
+            # lung2_mask[two_lungs_mask == 2] = 1
+
+            # lung1_mask = ndimage.binary_opening(lung1_mask, structure=struct, iterations=5)
+            
+            # lung2_mask = ndimage.binary_opening(lung2_mask, structure=struct, iterations=5)
+            
+            # mask[0][1].fill(0)
+            # mask[0][1][lung1_mask == 1] = 1
+            # mask[0][1][lung2_mask == 1] = 2
         else:
             ts = np.mean(mask) + np.std(mask)
             mask[mask <= ts] = 0
             mask[mask > ts] = 1
             mask = mask.astype('uint8')
 
-    # Morphological closing (dilation -> erosion)
-    mask[0][0] = ndimage.binary_closing(mask[0][0], 
-        structure=ndimage.generate_binary_structure(3,2)).astype(mask.dtype)
+            # Morphological closing (dilation -> erosion)
+            mask[0][0] = ndimage.binary_closing(mask[0][0], structure=struct).astype(mask.dtype)
 
-    # Morphological erosion
-    if erosion == True:
-        mask[0][0] = ndimage.binary_erosion(mask[0][0], 
-            structure=ndimage.generate_binary_structure(3,2)).astype(mask.dtype)
+            # Morphological erosion
+            if erosion == True:
+                mask[0][0] = ndimage.binary_erosion(mask[0][0], structure=struct).astype(mask.dtype)
 
     return mask
 
 
 if __name__ == "__main__":
+
+    try:
+        import model
+        from data import *
+    except:
+        from . import model
+        from .data import *
 
     # Argument parser
     parser = argparse.ArgumentParser(description="Inference script")
@@ -91,7 +104,10 @@ if __name__ == "__main__":
         print("CT-scan:\n -> shape:", ct_scan.shape, "\n -> spacing:", spacing)
 
     # Compute lungs mask
-    mask = predict(ct_scan, int(args.nb_classes), int(args.start_filters), args.model, threshold=args.threshold, erosion=args.erosion, verbose=args.verbose)
+    if args.model:
+        unet = model.UNet(1, args.nb_classes, args.start_filters)
+        unet.load_state_dict(torch.load(args.model))
+    mask = predict(ct_scan, int(args.nb_classes), modhreshold=args.threshold, erosion=args.erosion, verbose=args.verbose)
     
     if int(args.nb_classes) > 1:
         mask = mask[0][1]
@@ -102,7 +118,7 @@ if __name__ == "__main__":
     mask = utils.resample(mask, spacing, orig_spacing).astype('uint8')
 
     if args.threshold == True:
-        if int(args.nb_classes) > 1:
+        if int(args.nb_classes) == 2:
             mask[mask<0] = 0
             mask[mask>2] = 2
         else:
