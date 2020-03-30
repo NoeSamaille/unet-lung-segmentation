@@ -1,12 +1,15 @@
+#!/usr/bin/env python
 import numpy as np
 import pickle, nrrd, json
 import SimpleITK as sitk
 import torch
+import torch.nn as nn
 from torch.utils import data
 import torch.optim as optim
-import torch.nn as nn
 from torch.nn import functional as F
 from scipy import ndimage
+import mlflow
+import mlflow.pytorch
 import argparse
 import glob
 import os
@@ -79,9 +82,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Inference script")
     parser.add_argument("-d", "--data", required=True, help="Path to input CT-scan (nrrd format)")
     parser.add_argument("-o", "--output", required=True, help="Path to output directory")
-    parser.add_argument("-c", "--nb-classes", required=True, help="Number of U-Net output classes")
-    parser.add_argument("-f", "--start-filters", required=True, help="Number of filters")
-    parser.add_argument("-m", "--model", required=True, help="Path to model")
+    parser.add_argument("-c", "--nb-classes", required=False, type=int, default=1, help="Number of U-Net output classes")
+    parser.add_argument("-f", "--start-filters", required=False, type=int, default=32, help="Number of filters")
+    parser.add_argument("-m", "--model", required=False, help="Path to model")
     parser.add_argument("-t", "--threshold", action="store_true", required=False, help="If set, resulting mask will be thresholded by mean+sigma")
     parser.add_argument("-e", "--erosion", action="store_true", required=False, help="If set, will perform morphological erosion on resulting mask")
     parser.add_argument("-x", "--scan-size-x", type=int, default=128, required=False, help="X size of resized CT-scan")
@@ -89,10 +92,13 @@ if __name__ == "__main__":
     parser.add_argument("-z", "--scan-size-z", type=int, default=256, required=False, help="Z size of resized CT-scan")
     parser.add_argument("-v", "--verbose", action="store_true", required=False, help="If set, will show additionnal information")
     args = parser.parse_args()
+    
+    # MLFlow setup
+    remote_server_uri = "http://mlflow.10.7.13.202.nip.io/"
+    mlflow.set_tracking_uri(remote_server_uri)
 
     # Load scan
-    _, scan_id = os.path.split(args.data)
-    scan_id = scan_id.split('.')[0]
+    scan_id = os.path.basename(args.data).split('.')[0]
     ct_scan, origin, orig_spacing = utils.load_itk(args.data)
     if args.verbose == True:
         print(scan_id, ":\n -> shape:", ct_scan.shape, "\n -> spacing:", orig_spacing)
@@ -107,9 +113,12 @@ if __name__ == "__main__":
     if args.model:
         unet = model.UNet(1, args.nb_classes, args.start_filters)
         unet.load_state_dict(torch.load(args.model))
-    mask = predict(ct_scan, int(args.nb_classes), modhreshold=args.threshold, erosion=args.erosion, verbose=args.verbose)
+    else:
+        model_name = "lung-segmentation"
+        unet = mlflow.pytorch.load_model("models:/{}/production".format(model_name))
+    mask = predict(ct_scan, args.nb_classes, unet, threshold=args.threshold, erosion=args.erosion, verbose=args.verbose)
     
-    if int(args.nb_classes) > 1:
+    if args.nb_classes > 1:
         mask = mask[0][1]
     else:
         mask = mask[0][0]
@@ -118,7 +127,7 @@ if __name__ == "__main__":
     mask = utils.resample(mask, spacing, orig_spacing).astype('uint8')
 
     if args.threshold == True:
-        if int(args.nb_classes) == 2:
+        if args.nb_classes == 2:
             mask[mask<0] = 0
             mask[mask>2] = 2
         else:
