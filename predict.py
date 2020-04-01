@@ -94,8 +94,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # MLFlow setup
-    remote_server_uri = "http://mlflow.10.7.13.202.nip.io/"
-    mlflow.set_tracking_uri(remote_server_uri)
+    if not args.model:
+        remote_server_uri = "http://mlflow.10.7.13.202.nip.io/"
+        mlflow.set_tracking_uri(remote_server_uri)
 
     # Load scan
     scan_id = os.path.basename(args.data).split('.')[0]
