@@ -115,7 +115,10 @@ if __name__ == "__main__":
         unet = model.UNet(1, args.nb_classes, args.start_filters)
         unet.load_state_dict(torch.load(args.model))
     else:
-        model_name = "lung-segmentation"
+        if args.nb_classes == 2:
+            model_name = "lung-segmentation"
+        else:
+            model_name = "2-lungs-segmentation"
         unet = mlflow.pytorch.load_model("models:/{}/production".format(model_name))
     mask = predict(ct_scan, args.nb_classes, unet, threshold=args.threshold, erosion=args.erosion, verbose=args.verbose)
     
